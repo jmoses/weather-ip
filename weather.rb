@@ -6,17 +6,46 @@ require 'net/http'
 
 ip = ARGV[0]
 
-ip_details = JSON.load(Net::HTTP.get(URI.parse("http://www.geobytes.com/IpLocator.htm?GetLocation&template=json.txt&IpAddress=#{ip}")))
+class Location
+  attr_accessor :ip
+  def initialize(ip)
+    @ip = ip
+  end
 
-country_code = ip_details['geobytes']['ISO2']
-state = ip_details['geobytes']['code']
-city_name = ip_details['geobytes']['city']
+  def city
+    data['city']
+  end
 
+  def region_code
+    data['region_code']
+  end
 
-weather = JSON.load(Net::HTTP.get(URI.parse("http://api.openweathermap.org/data/2.1/find/name?units=imperial&q=#{city_name},#{state},#{country_code}")))
+  def country_code
+    data['country_code']
+  end
 
-city = weather['list'].first
-temp = city['main']['temp']
-condition = city['weather'].first['description']
+  def temp
+    weather['main']['temp']
+  end
 
-puts "It's currently #{temp} and '#{condition}' in #{city_name}"
+  def condition
+    weather['weather'].first['description']
+  end
+
+  private
+  def data
+    @data ||= begin
+      JSON.load(Net::HTTP.get(URI.parse("http://freegeoip.net/json/#{ip}")))
+    end
+  end
+
+  def weather
+    @weather ||= begin
+      JSON.load(Net::HTTP.get(URI.parse("http://api.openweathermap.org/data/2.1/find/name?units=imperial&q=#{city},#{region_code},#{country_code}")))['list'].first
+    end
+  end
+end
+
+location = Location.new(ip)
+
+puts "It's currently #{location.temp} and '#{location.condition}' in #{location.city}"
